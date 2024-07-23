@@ -8,17 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Data\Source\favourites.txt" />
-    <None Remove="Data\Source\users.txt" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Resource Include="Data\Source\favourites.txt">
+    <None Update="Data\Source\favourites.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Data\Source\users.txt">
+    </None>
+    <None Update="Data\Source\users.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -2,35 +2,124 @@
 
 internal class Program
 {
-    private static ColorWithCount _color { get; set; } = null!;
-    private static List<User> _users { get; set; } = null!;
+    private static ColorWithCount _mostPopularColor { get; set; } = null!;
+    private static List<User> _usersWhoVotedForPopularColor { get; set; } = null!;
 
     private static void Main(string[] args)
     {
-        var users = new List<User>();
-        var colorPreferences = new List<ColorPreference>();
+        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
-        // Update To Be More Relative Path
-        PopulateUsersFromFile(users, Path.Combine(
-                "C:", "Users", "Hendr", "Source", "Repos", "Wesdrie-Projects",
-                "FavoriteColor", "FavoriteColor", "Data", "Source", "users.txt"));
+        var users = PopulateUsersFromFile(Path.Combine(
+            baseDirectory, "Data", "Source", "users.txt"));
+        var colorPreferences = PopulateColorPreferencesFromFile(Path.Combine(
+            baseDirectory,  "Data", "Source", "favourites.txt"));
 
-        PopulateColorPreferencesFromFile(colorPreferences, Path.Combine(
-                "C:", "Users", "Hendr", "Source", "Repos", "Wesdrie-Projects",
-                "FavoriteColor", "FavoriteColor", "Data", "Source", "favourites.txt"));
+        DetermineMostPopularColorWithUsers(users, colorPreferences);
 
-        DetermineMostPopularColor(users, colorPreferences);
-
-        Console.WriteLine($"Most Popular Color: {_color.Color} With {_color.Count} Votes");
+        Console.WriteLine($"Most Popular Color: {_mostPopularColor.Color} With {_mostPopularColor.Count} Votes");
         Console.WriteLine("Users Who Voted For This Color:");
-        foreach (var user in _users)
+        foreach (var user in _usersWhoVotedForPopularColor)
         {
             Console.WriteLine($"{user.LastName}, {user.FirstName}");
         }
     }
 
-    private static void DetermineMostPopularColor(List<User> users,
+    /// <summary>
+    /// Determines the most popular colors with a list of Users who voted for that color. 
+    /// </summary>
+    /// <param name="users"></param>
+    /// <param name="colorPreferences"></param>
+    /// <exception cref="Exception"></exception>
+    private static void DetermineMostPopularColorWithUsers(List<User> users,
         List<ColorPreference> colorPreferences)
+    {
+        var colors = GetColorsWithCountOfVotes(colorPreferences);
+
+        var preferredColor = colors.OrderByDescending(c => c.Count).FirstOrDefault()
+            ?? throw new Exception("Unable To Determine Most Popular Color.");
+        _mostPopularColor = preferredColor;
+
+        var userIds = colorPreferences
+            .Where(cp => cp.Color == _mostPopularColor.Color)
+            .Select(cp => cp.UserId)
+            .Distinct()
+            .ToList();
+
+        _usersWhoVotedForPopularColor = users
+            .Where(u => userIds.Contains(u.Id))
+            .OrderBy(u => u.LastName)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Populates a list of User objects from a data source with the provided file path.
+    /// </summary>
+    /// <param name="filePath"></param>
+    /// <returns></returns>
+    private static List<User> PopulateUsersFromFile(string filePath)
+    {
+        var users = new List<User>();
+
+        foreach (var line in File.ReadLines(filePath))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var trimmedLine = line.Trim();
+            var information = trimmedLine.Split('\t');
+
+            var id = int.Parse(information[0]);
+            if (id != 0)
+            {
+                var names = information[1].Split(' ');
+                if (names != null)
+                {
+                    var user = new User(id, names[0], names[1]);
+                    users.Add(user);
+                }
+            }
+        }
+
+        return users;
+    }
+
+    /// <summary>
+    /// Populates a list of ColorPreference objects from a data source with the provided path.
+    /// </summary>
+    /// <param name="filePath"></param>
+    /// <returns></returns>
+    private static List<ColorPreference> PopulateColorPreferencesFromFile(string filePath)
+    {
+        var colorPreferences = new List<ColorPreference>();
+
+        foreach (var line in File.ReadLines(filePath))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var trimmedLine = line.Trim();
+            var information = trimmedLine.Split(' ');
+
+            var userId = int.Parse(information[0]);
+            if (userId != 0)
+            {
+                if (information[1] != null)
+                {
+                    var colorPreference = new ColorPreference(userId, information[1]);
+                    colorPreferences.Add(colorPreference);
+                }
+            }
+        }
+
+        return colorPreferences;
+    }
+
+    /// <summary>
+    /// Gets a list of ColorsWithCount that represent the amount of times a color has been voted for by users.
+    /// </summary>
+    /// <param name="colorPreferences"></param>
+    /// <returns></returns>
+    private static List<ColorWithCount> GetColorsWithCountOfVotes(List<ColorPreference> colorPreferences)
     {
         var colors = new List<ColorWithCount>();
 
@@ -52,83 +141,7 @@ internal class Program
             }
         }
 
-        var preferredColor = colors.OrderByDescending(c => c.Count).FirstOrDefault()
-            ?? throw new Exception("Unable To Determine Most Popular Color.");
-        _color = preferredColor;
-
-        var popularColorPreferences = colorPreferences
-            .Where(cp => cp.Color == _color.Color)
-            .Select(cp => cp.UserId)
-            .Distinct()
-            .ToList();
-
-        _users = users
-            .Where(u => popularColorPreferences.Contains(u.Id))
-            .OrderBy(u => u.LastName)
-            .ToList();
-    }
-
-    private static List<User> PopulateUsersFromFile(List<User> users,
-        string filePath)
-    {
-        foreach (var line in File.ReadLines(filePath))
-        {
-            // Ensure Line Is Not Empty.
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            // Remove Non-Valid Spaces.
-            var trimmedLine = line.Trim();
-
-            // Split Into UserId And UserName.
-            // Build Case For Double Names (?).
-            // Add Error Handling.
-            var information = trimmedLine.Split('\t');
-
-            var id = int.Parse(information[0]);
-            if (id != 0)
-            {
-                var names = information[1].Split(' ');
-                if (names != null)
-                {
-                    var user = new User(id, names[0], names[1]);
-                    users.Add(user);
-                }
-            }
-        }
-
-        return users;
-    }
-
-    private static List<ColorPreference> PopulateColorPreferencesFromFile(List<ColorPreference> colorPreferences,
-        string filePath)
-    {
-        foreach (var line in File.ReadLines(filePath))
-        {
-            // Ensure Line Is Not Empty.
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            // Remove Non-Valid Spaces.
-            var trimmedLine = line.Trim();
-
-            // Split Into UserId And UserName.
-            // Build Case For Double Names (?).
-            // Add Error Handling.
-            var information = trimmedLine.Split(' ');
-
-            var userId = int.Parse(information[0]);
-            if (userId != 0)
-            {
-                if (information[1] != null)
-                {
-                    var colorPreference = new ColorPreference(userId, information[1]);
-                    colorPreferences.Add(colorPreference);
-                }
-            }
-        }
-
-        return colorPreferences;
+        return colors;
     }
 
     private record ColorWithCount()
