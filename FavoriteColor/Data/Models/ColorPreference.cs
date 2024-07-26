@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a ColorPreference object that contains an related UserId and Color.
 /// </summary>
-internal class ColorPreference
+public class ColorPreference
 {
     public int UserId { get; init; }
     public string Color { get; init; } = null!;

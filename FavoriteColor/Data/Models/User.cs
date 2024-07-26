@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a User object that contains an Id, First Name and Last Name.
 /// </summary>
-internal class User
+public class User
 {
     public int Id { get; init; }
     public string FirstName { get; init; } = null!;
